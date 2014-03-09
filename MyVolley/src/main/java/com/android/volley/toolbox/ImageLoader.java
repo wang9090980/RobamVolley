@@ -68,7 +68,7 @@ public class ImageLoader {
      * HashMap of the currently pending responses (waiting to be delivered).
      */
     private final HashMap<String, BatchedImageRequest> mBatchedResponses =
-            new HashMap<String, BatchedImageRequest>();
+            new HashMap<>();
 
     /**
      * Handler to the main thread.

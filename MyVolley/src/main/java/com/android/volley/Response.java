@@ -23,13 +23,19 @@ package com.android.volley;
  */
 public class Response<T> {
 
-    /** Callback interface for delivering parsed responses. */
+    /**
+     * Callback interface for delivering parsed responses.
+     */
     public interface Listener<T> {
-        /** Called when a response is received. */
+        /**
+         * Called when a response is received.
+         */
         public void onResponse(T response);
     }
 
-    /** Callback interface for delivering error responses. */
+    /**
+     * Callback interface for delivering error responses.
+     */
     public interface ErrorListener {
         /**
          * Callback method that an error has been occurred with the
@@ -38,10 +44,26 @@ public class Response<T> {
         public void onErrorResponse(VolleyError error);
     }
 
-    /** Returns a successful response containing the parsed result. */
+    /**
+     * 下载进度的Listener
+     */
+    public interface ProgressListener {
+        /**
+         * 正在下载进度
+         *
+         * @param current 当前长度.
+         * @param total   总长度.
+         */
+        public void onProgressing(long current, long total);
+    }
+
+    /**
+     * Returns a successful response containing the parsed result.
+     */
     public static <T> Response<T> success(T result, Cache.Entry cacheEntry) {
         return new Response<T>(result, cacheEntry);
     }
+
 
     /**
      * Returns a failed response containing the given error code and an optional
@@ -51,16 +73,24 @@ public class Response<T> {
         return new Response<T>(error);
     }
 
-    /** Parsed response, or null in the case of error. */
+    /**
+     * Parsed response, or null in the case of error.
+     */
     public final T result;
 
-    /** Cache metadata for this response, or null in the case of error. */
+    /**
+     * Cache metadata for this response, or null in the case of error.
+     */
     public final Cache.Entry cacheEntry;
 
-    /** Detailed error information if <code>errorCode != OK</code>. */
+    /**
+     * Detailed error information if <code>errorCode != OK</code>.
+     */
     public final VolleyError error;
 
-    /** True if this response was a soft-expired one and a second one MAY be coming. */
+    /**
+     * True if this response was a soft-expired one and a second one MAY be coming.
+     */
     public boolean intermediate = false;
 
     /**

@@ -104,13 +104,17 @@ public class HurlStack implements HttpStack {
 
         URL parsedUrl = new URL(url);
 
+        // 创建与服务器的连接,但是还没有真正发送正文.
         HttpURLConnection connection = openConnection(parsedUrl, request);
 
-        //还要设置参数啊
+        // 设置请求头属性.
         for (String headerName : map.keySet()) {
             connection.addRequestProperty(headerName, map.get(headerName));
         }
+
+        // 设置请求方法,并且附加请求正文(如果有)
         setConnectionParametersForRequest(connection, request);
+
         // Initialize HttpResponse with data from the HttpURLConnection.
         ProtocolVersion protocolVersion = new ProtocolVersion("HTTP", 1, 1);
         int responseCode = connection.getResponseCode();
@@ -122,7 +126,11 @@ public class HurlStack implements HttpStack {
         StatusLine responseStatus = new BasicStatusLine(protocolVersion,
                 connection.getResponseCode(), connection.getResponseMessage());
         BasicHttpResponse response = new BasicHttpResponse(responseStatus);
+
+        // 发起数据请求
         response.setEntity(entityFromConnection(connection));
+
+        // 获取响应头
         for (Entry<String, List<String>> header : connection.getHeaderFields().entrySet()) {
             if (header.getKey() != null) {
                 Header h = new BasicHeader(header.getKey(), header.getValue().get(0));
@@ -142,7 +150,7 @@ public class HurlStack implements HttpStack {
         BasicHttpEntity entity = new BasicHttpEntity();
         InputStream inputStream;
         try {
-            //尼玛,getInputStream躲在这里,真正获取数据的.
+            //尼玛,getInputStream躲在这里,真正获取数据的.但这也只是打通一条管道而已.
             inputStream = connection.getInputStream();
         } catch (IOException ioe) {
             inputStream = connection.getErrorStream();
@@ -210,8 +218,7 @@ public class HurlStack implements HttpStack {
                     // output stream.
                     connection.setDoOutput(true);
                     connection.setRequestMethod("POST");
-                    connection.addRequestProperty(HEADER_CONTENT_TYPE,
-                            request.getPostBodyContentType());
+                    connection.addRequestProperty(HEADER_CONTENT_TYPE, request.getPostBodyContentType());
                     DataOutputStream out = new DataOutputStream(connection.getOutputStream());
                     out.write(postBody);
                     out.close();
@@ -220,9 +227,11 @@ public class HurlStack implements HttpStack {
             case Method.GET:
                 // Not necessary to set the request method because connection defaults to GET but
                 // being explicit here.
+                // 当Post的时候,忽略Params
                 connection.setRequestMethod("GET");
                 break;
             case Method.DELETE:
+                // DELETE也忽略掉Params
                 connection.setRequestMethod("DELETE");
                 break;
             case Method.POST:
@@ -238,10 +247,20 @@ public class HurlStack implements HttpStack {
         }
     }
 
+    /**
+     * 附加 Params 到 Connection.从这里可以看到,先把字节流写到缓冲区,所以不支持大文件上传的.
+     * 用WireShark解析了一下Post提交的数据,实际上也就是和一些很正常的文本,没什么神秘的.比如JSON数据,根据需要变化.说白了就是编码后的字节流.
+     *
+     * @param connection
+     * @param request
+     * @throws IOException
+     * @throws AuthFailureError
+     */
     private static void addBodyIfExists(HttpURLConnection connection, Request<?> request)
             throws IOException, AuthFailureError {
         byte[] body = request.getBody();
         if (body != null) {
+            // output设为true
             connection.setDoOutput(true);
             connection.addRequestProperty(HEADER_CONTENT_TYPE, request.getBodyContentType());
             DataOutputStream out = new DataOutputStream(connection.getOutputStream());

@@ -25,12 +25,12 @@ import com.android.volley.NetworkError;
 import com.android.volley.NetworkResponse;
 import com.android.volley.NoConnectionError;
 import com.android.volley.Request;
+import com.android.volley.Response;
 import com.android.volley.RetryPolicy;
 import com.android.volley.ServerError;
 import com.android.volley.TimeoutError;
 import com.android.volley.VolleyError;
 import com.android.volley.VolleyLog;
-import com.lidroid.xutils.util.LogUtils;
 
 import org.apache.http.Header;
 import org.apache.http.HttpEntity;
@@ -49,9 +49,11 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
+ * Modify by weiji.chen 2014/03/09
  * A network performing Volley requests over an {@link com.android.volley.toolbox.HttpStack}.
- * 这才是维护网络请求.
+ * 这才是管理网络请求.网络数据就是从这里获取的.由于原来直接存到内存,如果文件大了会OOM.
  * 而Volley.RequestQueue,NetworkDispatcher只不过是维护队列和分发.
+ * 在原有的基础上增加了一个进度更新监听.
  */
 public class BasicNetwork implements Network {
     protected static final boolean DEBUG = VolleyLog.DEBUG;
@@ -88,6 +90,7 @@ public class BasicNetwork implements Network {
      * 由于有HttpClient和HttpUrlConnect两种方法执行网络请求.
      * 从HttpStack.perfrormRequest()返回的是apache标准的httpresponse,
      * 所以获取到了httpResponse之后就是转换成NetworkResponse.
+     * 是否直接下载到磁盘:指定了文件路径 +不使用缓存．
      *
      * @param request Request to process
      * @return
@@ -120,11 +123,7 @@ public class BasicNetwork implements Network {
                             request.getCacheEntry().data, responseHeaders, true);
                 }
 
-                /**
-                 *TODO::是不是在这里httpResponse.getEntity()才真正获取数据呢?
-                 */
-                LogUtils.i("Begin to get data from net...");
-                responseContents = entityToBytes(httpResponse.getEntity());
+                responseContents = entityToBytes(httpResponse.getEntity(), request.getProgressListener());
 
                 // if the request is slow, log it.
                 long requestLifetime = SystemClock.elapsedRealtime() - requestStart;
@@ -195,8 +194,7 @@ public class BasicNetwork implements Network {
         try {
             retryPolicy.retry(exception);
         } catch (VolleyError e) {
-            request.addMarker(
-                    String.format("%s-timeout-giveup [timeout=%s]", logPrefix, oldTimeout));
+            request.addMarker(String.format("%s-timeout-giveup [timeout=%s]", logPrefix, oldTimeout));
             throw e;
         }
         request.addMarker(String.format("%s-retry [timeout=%s]", logPrefix, oldTimeout));
@@ -235,9 +233,23 @@ public class BasicNetwork implements Network {
      * 但是,有一个很大的问题,它在下载的时候是在内存缓存区开辟空间接收数据的,内存一下子就占了和下载文件的大小.
      * 所以这种做法很不适合下载大文件.只适合小文件而已.注意内存的占用.看来还是得参照xutils另外写
      */
-    private byte[] entityToBytes(HttpEntity entity) throws IOException, ServerError {
-        PoolingByteArrayOutputStream bytes =
-                new PoolingByteArrayOutputStream(mPool, (int) entity.getContentLength());
+    private byte[] entityToBytes(HttpEntity entity, Response.ProgressListener progressListener) throws IOException, ServerError {
+        PoolingByteArrayOutputStream bytes = new PoolingByteArrayOutputStream(mPool, (int) entity.getContentLength());
+
+        // 以下是控制进度的.
+        boolean updateProgress = (progressListener != null);
+        long current = 0;
+        long lastUpdateTime = 0;
+        long currentUpdateTime = 0;
+        long total = 0;
+        long UPDATE_RATE = 1000;
+        //public init
+        if (updateProgress) {
+            total = entity.getContentLength();
+            progressListener.onProgressing(current, total);
+            lastUpdateTime = System.currentTimeMillis();
+        }
+
         byte[] buffer = null;
         try {
             InputStream in = entity.getContent();
@@ -247,10 +259,16 @@ public class BasicNetwork implements Network {
             buffer = mPool.getBuf(1024);
             int count;
             while ((count = in.read(buffer)) != -1) {
-                LogUtils.i("get data...");
                 bytes.write(buffer, 0, count);
+                if (updateProgress) {
+                    current += count;
+                    currentUpdateTime = System.currentTimeMillis();
+                    if (currentUpdateTime - lastUpdateTime > UPDATE_RATE) {
+                        progressListener.onProgressing(current, total);
+                        lastUpdateTime = currentUpdateTime;
+                    }
+                }
             }
-            LogUtils.i("The byte length is:" + bytes.size());
             return bytes.toByteArray();
         } finally {
             try {

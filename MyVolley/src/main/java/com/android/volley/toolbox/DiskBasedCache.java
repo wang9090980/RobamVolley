@@ -64,9 +64,9 @@ public class DiskBasedCache implements Cache {
     private final int mMaxCacheSizeInBytes;
 
     /**
-     * Default maximum disk usage in bytes.
+     * Default maximum disk usage in bytes.10M
      */
-    private static final int DEFAULT_DISK_USAGE_BYTES = 5 * 1024 * 1024;
+    public static final int DEFAULT_DISK_USAGE_BYTES = 10 * 1024 * 1024;
 
     /**
      * High water mark percentage for the cache

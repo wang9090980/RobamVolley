@@ -135,6 +135,8 @@ public class NetworkDispatcher extends Thread {
                 // TODO: Only update cache metadata instead of entire record for 304s.
                 // TODO:尼玛的,翻译读了十遍才明白什么意思:对于304等entire数据没有变化的,只更新缓存的metadata而不是整个记录.
                 if (request.shouldCache() && response.cacheEntry != null) {
+                    // 这里的CacheData就是需要缓存的数据啊.是从自定义的Request.parseNetworkResponse中传递过来的.
+                    // 所以这就给了一个很大的空间,需要缓存的就写入,不需要就传null
                     mCache.put(request.getCacheKey(), response.cacheEntry);
                     request.addMarker("network-cache-written");
                 }

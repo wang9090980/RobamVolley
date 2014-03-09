@@ -33,7 +33,7 @@ public class StringRequest extends Request<String> {
     /**
      * Creates a new request with the given method.
      *
-     * @param method        the request {@link com.android.volley.Request.Method} to use
+     * @param method        the request {@link Method} to use
      * @param url           URL to fetch the string at
      * @param listener      Listener to receive the String response
      * @param errorListener Error listener, or null to ignore errors
@@ -69,6 +69,7 @@ public class StringRequest extends Request<String> {
     protected Response<String> parseNetworkResponse(NetworkResponse response) {
         String parsed;
         try {
+            //在这里设置字符集.
             parsed = new String(response.data, HttpHeaderParser.parseCharset(response.headers));
         } catch (UnsupportedEncodingException e) {
             parsed = new String(response.data);

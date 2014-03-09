@@ -76,18 +76,18 @@ public class RequestQueue {
      * The cache triage queue.
      */
     private final PriorityBlockingQueue<Request> mCacheQueue =
-            new PriorityBlockingQueue<Request>();
+            new PriorityBlockingQueue<>();
 
     /**
      * The queue of requests that are actually going out to the network.
      */
     private final PriorityBlockingQueue<Request> mNetworkQueue =
-            new PriorityBlockingQueue<Request>();
+            new PriorityBlockingQueue<>();
 
     /**
      * Number of network request dispatcher threads to start.
      */
-    private static final int DEFAULT_NETWORK_THREAD_POOL_SIZE = 4;
+    public static final int DEFAULT_NETWORK_THREAD_POOL_SIZE = 4;
 
     /**
      * Cache interface for retrieving and storing respones.
@@ -173,6 +173,7 @@ public class RequestQueue {
 
     /**
      * Stops the cache and network dispatchers.
+     * 释放处理线程资源.当不需要网络请求了,最好释放掉.
      */
     public void stop() {
         if (mCacheDispatcher != null) {
@@ -270,7 +271,7 @@ public class RequestQueue {
                 // There is already a request in flight. Queue up.
                 Queue<Request> stagedRequests = mWaitingRequests.get(cacheKey);
                 if (stagedRequests == null) {
-                    stagedRequests = new LinkedList<Request>();
+                    stagedRequests = new LinkedList<>();
                 }
                 stagedRequests.add(request);
                 mWaitingRequests.put(cacheKey, stagedRequests);
